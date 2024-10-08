@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五目並べ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        canvas {
+            border: 1px solid black;
+            display: inline-block;
+        }
+
+        #turn {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>五目並べ</h1>
+    <canvas id="board" width="380" height="380"></canvas>
+    <p id="turn">黒の番です</p>
+    <script>
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const stoneRadius = 8;
+        const boardSize = 19;
+        let board = new Array(boardSize).fill(null).map(() => new Array(boardSize).fill(null));
+        let currentPlayer = 'black';
+        function drawGrid() {
+            ctx.fillStyle = '#dcb35c';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'black';
+            for (let i = 0; i < boardSize; i++) {
+                ctx.beginPath();
+                ctx.moveTo(gridSize + i * gridSize, gridSize);
+                ctx.lineTo(gridSize + i * gridSize, canvas.height - gridSize);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(gridSize, gridSize + i * gridSize);
+                ctx.lineTo(canvas.width - gridSize, gridSize + i * gridSize);
+                ctx.stroke();
+            }
+        }
+        function drawStone(x, y, color, opacity = 1) {
+            ctx.beginPath();
+            ctx.arc(x, y, stoneRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.globalAlpha = opacity;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        function getMousePosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            return { x, y };
+        }
+        function positionToCoordinate(x, y) {
+            return {
+                row: Math.round((y - gridSize) / gridSize),
+                col: Math.round((x - gridSize) / gridSize),
+            };
+        }
+        function placeStone(row, col, color) {
+            board[row][col] = color;
+            drawStone(gridSize + col * gridSize, gridSize + row * gridSize, color);
+        }
+        function isValidMove(row, col) {
+            return row >= 0 && col >= 0 && row < boardSize && col < boardSize && !board[row][col];
+        }
+        canvas.addEventListener('mousemove', (event) => {
+            const { x, y } = getMousePosition(event);
+            const { row, col } = positionToCoordinate(x, y);
+            if (isValidMove(row, col)) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGrid();
+                board.forEach((row, rowIndex) =>
+                    row.forEach((stone, colIndex) => {
+                        if (stone) {
+                            drawStone(gridSize + colIndex * gridSize, gridSize + rowIndex * gridSize, stone);
+                        }
+                    })
+                );
+                drawStone(gridSize + col * gridSize, gridSize + row * gridSize, currentPlayer, 0.5);
+            }
+        });
+        canvas.addEventListener('click', (event) => {
+            const { x, y } = getMousePosition(event);
+            const { row, col } = positionToCoordinate(x, y);
+            if (isValidMove(row, col)) {
+                placeStone(row, col, currentPlayer);
+                if (checkWin(row, col, currentPlayer)) {
+                    alert(currentPlayer === 'black' ? '黒の勝ちです！' : '白の勝ちです！');
+                    board = new Array(boardSize).fill(null).map(() => new Array(boardSize).fill(null));
+                } else {
+                    currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+                    document.getElementById('turn').textContent = currentPlayer === 'black' ? '黒の番です' : '白の番です';
+                }
+            }
+        });
+        function checkWin(row, col, player) {
+            const directions = [
+                { row: 1, col: 0 },
+                { row: 0, col: 1 },
+                { row: 1, col: 1 },
+                { row: 1, col: -1 },
+            ];
+            for (const direction of directions) {
+                let count = 1;
+                for (let i = 1; i < 5; i++) {
+                    const newRow = row + direction.row * i;
+                    const newCol = col + direction.col * i;
+                    if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize && board[newRow][newCol] === player) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+                for (let i = 1; i < 5; i++) {
+                    const newRow = row - direction.row * i;
+                    const newCol = col - direction.col * i;
+                    if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize && board[newRow][newCol] === player) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+                if (count >= 5) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        drawGrid();</script>
+</body>
+
+</html>

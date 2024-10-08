@@ -4,7 +4,7 @@
 ## 概要
 このリポジトリは、こちらの動画と同様のルールで量子五目並べを実装するリポジトリです。
 
-[【【理解不能】何色になるか分からない量子で五目並べやってみた【でも楽しそう】](https://www.youtube.com/watch?v=mitAxA3f4U4)
+[【理解不能】何色になるか分からない量子で五目並べやってみた【でも楽しそう】](https://www.youtube.com/watch?v=mitAxA3f4U4)
 
 
 ## ルール
@@ -26,12 +26,20 @@
 - 「観測」によって、白と黒、両方の石が 5 つ並べられている場合、「観測」を行った側の勝利となる
 - 盤面が全て埋まっても勝敗がつかない場合、引き分けとなる
 
+## 実行方法
+html ファイルを ダブルクリック で実行することができます。
+ゲームをリセットする場合は F5 キーを押してください。
+
+## プログラムの説明
+[Gomoku.html](/Gomoku.html) は普通の五目並べのゲームです。
+[quantaization_gomoku_vs_CPU_select_turn.html](/quantaization_gomoku_vs_CPU_select_turn.html) は量子五目並べのゲームです。対戦相手は CPU です。先手後手を選択できます。
+[quantaization_gomoku_two_people.html](/quantaization_gomoku_two_people.html) は量子五目並べのゲームです。対戦相手はプレイヤーです。2 人または 1 人のシミュレーション用に作成されています。
 
 
 ## Overview
 This repository is an implementation of quantum Gomoku with rules similar to this video.
 
-[【【理解不能】何色になるか分からない量子で五目並べやってみた【でも楽しそう】](https://www.youtube.com/watch?v=mitAxA3f4U4)
+[【理解不能】何色になるか分からない量子で五目並べやってみた【でも楽しそう】](https://www.youtube.com/watch?v=mitAxA3f4U4)
 
 ## Rules
 ### Basic rules
@@ -52,5 +60,13 @@ This repository is an implementation of quantum Gomoku with rules similar to thi
 - If both black and white stones are lined up by the "observation", the side that made the "observation" wins
 - If the board is full and there is no winner, the game is a draw
 
+## How to run
+You can run the html file by double-clicking on it.
+If you want to reset the game, press the F5 key.
 
+## Program description
+[Gomoku.html](/Gomoku.html) is a normal Gomoku game.
+[quantaization_gomoku_vs_CPU_select_turn.html](/quantaization_gomoku_vs_CPU_select_turn.html) is a quantum Gomoku game. The opponent is the CPU. You can choose the first or second move.
+[quantaization_gomoku_two_people.html](/quantaization_gomoku_two_people.html) is a quantum Gomoku game. The opponent is a player. It is created for simulation with 2 people or 1 person.
+```
 

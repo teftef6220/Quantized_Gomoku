@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>量子五目並べ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        canvas {
+            border: 1px solid black;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        #turn {
+            font-weight: bold;
+        }
+
+        #controls {
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #observation-info {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>量子五目並べ</h1>
+    <!-- 色の選択インターフェース -->
+    <div id="player-color-selection">
+        <p>石の色を選んでください：</p>
+        <button id="choose-black">黒</button>
+        <button id="choose-white">白</button>
+    </div>
+    <!-- ゲームコンテナ -->
+    <div id="game-container" style="display: none;">
+        <div id="game-area">
+            <canvas id="board" width="640" height="640"></canvas>
+            <canvas id="observed-board" width="640" height="640" style="display: none;"></canvas>
+        </div>
+        <p id="turn"></p>
+        <p id="observation-prompt"></p>
+        <p id="winner"></p>
+        <div id="controls">
+            <button id="observe" disabled>観測する</button>
+            <button id="skip-observe" disabled>観測しない</button>
+            <button id="continue" style="display: none;">続ける</button>
+            <button id="reset" style="display: none;">リセット</button>
+        </div>
+        <p id="observation-info"></p>
+    </div>
+    <script>
+        const canvas = document.getElementById('board');
+        const observedCanvas = document.getElementById('observed-board');
+        const ctx = canvas.getContext('2d');
+        const observedCtx = observedCanvas.getContext('2d');
+
+        // board size and grid size
+        const boardSize = 19; // 19x19の碁盤
+        const gridSize = 30;  // グリッド間隔
+        const stoneRadius = 12; // 石の半径
+        const offset = 40;   // 余白（ラベル用）
+
+        // Labels for columns and rows
+        const columnLabels = ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
+        const rowLabels = ['3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21'];
+
+        class Stone {
+            constructor(probability, player) {
+                this.probability = probability; // 黒になる確率
+                this.player = player; // 'black' または 'white'
+            }
+        }
+
+        let board = new Array(boardSize).fill(null).map(() => new Array(boardSize).fill(null));
+        let currentPlayer; // 現在のプレイヤー
+
+        // プレイヤーとCPUの色
+        let playerColor;
+        let cpuColor;
+
+        // プレイヤーごとの石の確率
+        const playerStones = {
+            'black': [0.9, 0.7],
+            'white': [0.1, 0.3]
+        };
+
+        let stoneIndex = {
+            'black': 0,
+            'white': 0
+        };
+
+        let gameEnded = false; // ゲームが終了したかどうか
+        let observationInProgress = false; // 観測中かどうか
+        let tempFinalColors = []; // 観測結果を保持
+
+        let turnCount = 0; // turn count
+
+        let observingPlayer = null; // 観測権を持つプレイヤー
+        let lastObservingPlayer = null; // 最後に観測を行ったプレイヤー
+
+        let isCpuTurn = false; // CPU のターンかどうか
+
+        let CPU_Power = 0; //0:random , 1 : 少し強い
+
+        function drawGrid(context) {
+            context.fillStyle = '#dcb35c';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            context.strokeStyle = 'black';
+            context.lineWidth = 1;
+            // 縦線と横線の描画
+            for (let i = 0; i < boardSize; i++) {
+                // 縦線
+                context.beginPath();
+                context.moveTo(offset + i * gridSize, offset);
+                context.lineTo(offset + i * gridSize, offset + (boardSize - 1) * gridSize);
+                context.stroke();
+                // 横線
+                context.beginPath();
+                context.moveTo(offset, offset + i * gridSize);
+                context.lineTo(offset + (boardSize - 1) * gridSize, offset + i * gridSize);
+                context.stroke();
+            }
+
+            // 座標ラベルの描画
+            context.fillStyle = 'black';
+            context.font = '14px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+
+            // 列ラベル（上部）
+            for (let i = 0; i < boardSize; i++) {
+                const x = offset + i * gridSize;
+                const y = offset - gridSize / 2;
+                context.fillText(columnLabels[i], x, y);
+            }
+
+            // 行ラベル（左側）
+            for (let i = 0; i < boardSize; i++) {
+                const x = offset - gridSize / 2;
+                const y = offset + i * gridSize;
+                context.fillText(rowLabels[i], x, y);
+            }
+        }
+
+        function drawStone(context, x, y, stone, opacity = 1, finalColor = null) {
+            context.beginPath();
+            context.arc(x, y, stoneRadius, 0, 2 * Math.PI);
+            // 確率に応じて色の濃さを変更
+            let color, intensity;
+            if (finalColor) {
+                color = finalColor;
+                intensity = 1;
+            } else {
+                color = stone.player;
+                intensity = stone.probability;
+            }
+            context.fillStyle = color === 'black' ? `rgba(0, 0, 0, ${intensity * opacity})` : `rgba(255, 255, 255, ${intensity * opacity})`;
+            context.fill();
+            context.strokeStyle = 'black';
+            context.stroke();
+
+            // 確率の数値を表示
+            context.fillStyle = color === 'black' ? 'white' : 'black';
+            context.font = '12px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            const probabilityText = finalColor ? '' : `${(stone.probability * 100).toFixed(0)}%`;
+            context.fillText(probabilityText, x, y);
+        }
+
+        function getMousePosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left - offset;
+            const y = event.clientY - rect.top - offset;
+            return { x, y };
+        }
+
+        function positionToCoordinate(x, y) {
+            return {
+                row: Math.round(y / gridSize),
+                col: Math.round(x / gridSize),
+            };
+        }
+
+        function placeStone(row, col, player) {
+            const probabilities = playerStones[player];
+            const index = stoneIndex[player];
+            const probability = probabilities[index];
+            stoneIndex[player] = (index + 1) % probabilities.length;
+
+            const stone = new Stone(probability, player);
+            board[row][col] = stone;
+            drawStone(ctx, offset + col * gridSize, offset + row * gridSize, stone);
+        }
+
+        function isValidMove(row, col) {
+            return row >= 0 && col >= 0 && row < boardSize && col < boardSize && !board[row][col];
+        }
+
+        // プレイヤーが石を置くフェーズ
+        function enablePlacement() {
+            canvas.addEventListener('click', canvasClickHandler);
+        }
+
+        function disablePlacement() {
+            canvas.removeEventListener('click', canvasClickHandler);
+        }
+
+        function canvasClickHandler(event) {
+            if (gameEnded || observationInProgress || isCpuTurn) return;
+
+            // 前のプレイヤーの観測権を確認
+            if (observingPlayer && observingPlayer !== playerColor) {
+                observingPlayer = null;
+                document.getElementById('observe').disabled = true;
+                document.getElementById('skip-observe').disabled = true;
+                document.getElementById('observation-prompt').textContent = ''; // メッセージをクリア
+            }
+
+            const { x, y } = getMousePosition(event);
+            const { row, col } = positionToCoordinate(x, y);
+            if (isValidMove(row, col)) {
+                placeStone(row, col, playerColor); // プレイヤーの色で石を置く
+
+                // ターン数をインクリメント
+                turnCount++;
+
+                // 石を置いた後は石を置けないようにする
+                disablePlacement();
+
+                // 観測権を設定
+                if (turnCount >= 5) {
+                    observingPlayer = playerColor;
+                    document.getElementById('observe').disabled = false;
+                    document.getElementById('skip-observe').disabled = false;
+                    document.getElementById('observation-prompt').textContent = '観測しますか？';
+                } else {
+                    observingPlayer = null;
+                }
+
+                // 観測権がある場合はターンを切り替えない
+                if (observingPlayer === playerColor) {
+                    // プレイヤーの行動を有効化（観測を促す）
+                    enablePlayerAction();
+                } else {
+                    // 観測権がなければCPUのターンに移行
+                    switchTurn();
+                }
+            }
+        }
+
+        function switchTurn() {
+            currentPlayer = cpuColor;
+            isCpuTurn = true;
+
+            document.getElementById('turn').textContent = 'CPU の番です';
+
+            cpuAction();
+            // Once the CPU completes its move, immediately switch back to the player
+            setTimeout(() => {
+                currentPlayer = playerColor;
+                isCpuTurn = false;
+                enablePlayerAction(); // Re-enable the player's turn
+            }, 1000); // After the CPU's move and observation, give control back to the player
+        }
+
+        function cpuAction() {
+            if (gameEnded) return;
+
+            setTimeout(() => {
+                // 空いているマスを取得
+                const availableMoves = [];
+                for (let row = 0; row < boardSize; row++) {
+                    for (let col = 0; col < boardSize; col++) {
+                        if (isValidMove(row, col)) {
+                            availableMoves.push({ row, col });
+                        }
+                    }
+                }
+
+                if (availableMoves.length === 0) {
+                    alert('引き分けです！');
+                    gameEnded = true;
+                    document.getElementById('winner').textContent = '引き分けです！';
+                    return;
+                }
+
+                if (CPU_Power === 0) {
+                    // ランダムにマスを選択
+                    const move = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    placeStone(move.row, move.col, cpuColor); // CPU の色で石を置く
+                }
+                // CPU_Power が 1 の場合の処理は省略
+
+                // ターン数をインクリメント
+                turnCount++;
+
+                // 観測権を設定
+                if (turnCount >= 5) {
+                    observingPlayer = cpuColor; // CPU に観測権を与える
+                } else {
+                    observingPlayer = null;
+                }
+
+                // 手を打った後に観測を行うか判断
+                if (observingPlayer === cpuColor && Math.random() < 0.5) {
+                    // 50% の確率で観測を行う
+                    cpuObserve();
+                    isCpuTurn = false; // CPU のターン終了
+                }
+
+                observingPlayer = null; // 観測権を消失
+
+                isCpuTurn = false; // CPU のターン終了
+
+                // プレイヤーの行動を有効化
+                currentPlayer = playerColor;
+                enablePlayerAction();
+            }, 1000);
+        }
+
+        function cpuObserve() {
+            observationInProgress = true;
+
+            // 観測権を消失
+            observingPlayer = null;
+
+            // 観測を行ったことを表示
+            document.getElementById('observation-info').textContent = 'CPU が観測を行いました';
+
+            // 観測者を記録
+            lastObservingPlayer = cpuColor;
+
+            // すべての石を観測（石の色を一時的に決定）
+            tempFinalColors = [];
+            for (let row = 0; row < boardSize; row++) {
+                tempFinalColors[row] = [];
+                for (let col = 0; col < boardSize; col++) {
+                    const stone = board[row][col];
+                    if (stone) {
+                        const randomValue = Math.random();
+                        const finalColor = randomValue < stone.probability ? 'black' : 'white';
+                        tempFinalColors[row][col] = finalColor;
+                    } else {
+                        tempFinalColors[row][col] = null;
+                    }
+                }
+            }
+
+            // 観測後の盤面を描画
+            observedCanvas.style.display = 'inline-block';
+            drawObservedBoard(tempFinalColors);
+
+            // 続けるボタンをクリックするまで表示
+            document.getElementById('continue').style.display = 'inline-block';
+
+            isCpuTurn = false;
+            currentPlayer = playerColor;
+            enablePlayerAction();
+        }
+
+        // プレイヤーの行動を有効化
+        function enablePlayerAction() {
+            if (gameEnded || isCpuTurn) return;
+
+            // ターンの表示を更新
+            document.getElementById('turn').textContent = 'あなたの番です';
+
+            // 観測権を持っている場合
+            if (observingPlayer === playerColor) {
+                document.getElementById('observe').disabled = false;
+                document.getElementById('skip-observe').disabled = false;
+                document.getElementById('observation-prompt').textContent = '観測しますか？';
+            } else {
+                // 石を置けるようにする
+                enablePlacement();
+                document.getElementById('observe').disabled = true;
+                document.getElementById('skip-observe').disabled = true;
+                document.getElementById('observation-prompt').textContent = '';
+            }
+        }
+
+        function disablePlayerAction() {
+            document.getElementById('observe').disabled = true;
+            document.getElementById('skip-observe').disabled = true;
+            disablePlacement();
+        }
+
+        // 観測ボタンの処理
+        document.getElementById('observe').addEventListener('click', () => {
+            if (gameEnded || observationInProgress || observingPlayer !== playerColor) return;
+
+            observationInProgress = true; // 観測中フラグを立てる
+
+            // ボタンを無効化
+            document.getElementById('observe').disabled = true;
+            document.getElementById('skip-observe').disabled = true;
+            document.getElementById('observation-prompt').textContent = ''; // メッセージをクリア
+
+            const observingPlayerCopy = observingPlayer; // 観測を行ったプレイヤーを記録
+
+            lastObservingPlayer = observingPlayerCopy; // 観測者をグローバル変数に保存
+
+            // 観測権を消失
+            observingPlayer = null;
+
+            // 観測を行ったプレイヤーを表示
+            document.getElementById('observation-info').textContent = 'あなたが観測を行いました';
+
+            // すべての石を観測（石の色を一時的に決定）
+            tempFinalColors = [];
+            for (let row = 0; row < boardSize; row++) {
+                tempFinalColors[row] = [];
+                for (let col = 0; col < boardSize; col++) {
+                    const stone = board[row][col];
+                    if (stone) {
+                        const randomValue = Math.random();
+                        const finalColor = randomValue < stone.probability ? 'black' : 'white';
+                        tempFinalColors[row][col] = finalColor;
+                    } else {
+                        tempFinalColors[row][col] = null;
+                    }
+                }
+            }
+
+            // 観測後の盤面を描画
+            observedCanvas.style.display = 'inline-block';
+            drawObservedBoard(tempFinalColors);
+
+            // 「続ける」ボタンを表示
+            document.getElementById('continue').style.display = 'inline-block';
+
+            // プレイヤーの行動を無効化
+            disablePlayerAction();
+        });
+
+        // 「観測しない」ボタンの処理
+        document.getElementById('skip-observe').addEventListener('click', () => {
+            if (gameEnded || observationInProgress || observingPlayer !== playerColor) return;
+
+            // 観測権を消失
+            observingPlayer = null;
+
+            // ボタンを無効化
+            document.getElementById('observe').disabled = true;
+            document.getElementById('skip-observe').disabled = true;
+            document.getElementById('observation-prompt').textContent = '';
+
+            // プレイヤーの行動を無効化
+            disablePlayerAction();
+
+            // CPUのターンに移行
+            switchTurn();
+        });
+
+        // 続けるボタンの処理
+        document.getElementById('continue').onclick = () => {
+            if (gameEnded) return;
+
+            document.getElementById('continue').style.display = 'none';
+            observedCanvas.style.display = 'none';
+
+            // 勝敗判定
+            const winResult = checkWinAfterObservation(tempFinalColors);
+
+            if (winResult === 'black' || winResult === 'white') {
+                gameEnded = true;
+
+                // 勝者を画面に表示
+                document.getElementById('winner').textContent = `${winResult === playerColor ? 'あなた' : 'CPU'}の勝ちです！`;
+
+                // 最後の盤面を表示
+                observedCanvas.style.display = 'inline-block';
+                document.getElementById('reset').style.display = 'inline-block';
+                document.getElementById('turn').textContent = '';
+                document.getElementById('observation-prompt').textContent = '';
+            } else if (winResult === 'both') {
+                // 観測を行ったプレイヤーが勝利
+                const winner = lastObservingPlayer === playerColor ? 'あなた' : 'CPU';
+                alert(`${winner}の勝ちです！`);
+                gameEnded = true;
+
+                // 勝者を画面に表示
+                document.getElementById('winner').textContent = `${winner}の勝ちです！`;
+
+                observedCanvas.style.display = 'inline-block';
+                document.getElementById('reset').style.display = 'inline-block';
+                document.getElementById('turn').textContent = '';
+                document.getElementById('observation-prompt').textContent = '';
+            } else {
+
+                // 盤面を元に戻す
+                redrawBoard();
+
+                // 観測中フラグを下ろす
+                observationInProgress = false;
+
+                // 観測メッセージをクリア
+                document.getElementById('observation-info').textContent = '';
+
+                // 次のターンに移行
+                if (lastObservingPlayer === playerColor) {
+                    // CPUのターンに移行
+                    switchTurn();
+                } else {
+                    // プレイヤーの行動を有効化
+                    currentPlayer = playerColor;
+                    enablePlayerAction();
+                }
+            }
+        };
+
+        function redrawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid(ctx);
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const stone = board[row][col];
+                    if (stone) {
+                        const x = offset + col * gridSize;
+                        const y = offset + row * gridSize;
+                        drawStone(ctx, x, y, stone);
+                    }
+                }
+            }
+        }
+
+        function drawObservedBoard(tempFinalColors) {
+            observedCtx.clearRect(0, 0, observedCanvas.width, observedCanvas.height);
+            drawGrid(observedCtx);
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const stone = board[row][col];
+                    if (stone) {
+                        const x = offset + col * gridSize;
+                        const y = offset + row * gridSize;
+                        drawStone(observedCtx, x, y, stone, 1, tempFinalColors[row][col]);
+                    }
+                }
+            }
+        }
+
+        function checkWinAfterObservation(tempFinalColors) {
+            let blackWins = false;
+            let whiteWins = false;
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const color = tempFinalColors[row][col];
+                    if (color) {
+                        if (checkWinFromPosition(row, col, color, tempFinalColors)) {
+                            if (color === 'black') {
+                                blackWins = true;
+                            } else if (color === 'white') {
+                                whiteWins = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (blackWins && whiteWins) {
+                return 'both';
+            } else if (blackWins) {
+                return 'black';
+            } else if (whiteWins) {
+                return 'white';
+            } else {
+                return null;
+            }
+        }
+
+        function checkWinFromPosition(row, col, player, tempFinalColors) {
+            const directions = [
+                { row: 1, col: 0 },
+                { row: 0, col: 1 },
+                { row: 1, col: 1 },
+                { row: 1, col: -1 },
+            ];
+            for (const direction of directions) {
+                let count = 1;
+                for (let i = 1; i < 5; i++) {
+                    const newRow = row + direction.row * i;
+                    const newCol = col + direction.col * i;
+                    if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
+                        const color = tempFinalColors[newRow][newCol];
+                        if (color === player) {
+                            count++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                for (let i = 1; i < 5; i++) {
+                    const newRow = row - direction.row * i;
+                    const newCol = col - direction.col * i;
+                    if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
+                        const color = tempFinalColors[newRow][newCol];
+                        if (color === player) {
+                            count++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                if (count >= 5) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function resetGame() {
+            board = new Array(boardSize).fill(null).map(() => new Array(boardSize).fill(null));
+            currentPlayer = 'black';
+            stoneIndex = { 'black': 0, 'white': 0 };
+            gameEnded = false;
+            observationInProgress = false;
+            tempFinalColors = [];
+            observingPlayer = null; // 観測権をリセット
+            lastObservingPlayer = null; // 観測者をリセット
+            turnCount = 0;
+            isCpuTurn = false;
+            document.getElementById('turn').textContent = 'あなたの番です';
+            document.getElementById('winner').textContent = '';
+            document.getElementById('observe').disabled = true;
+            document.getElementById('skip-observe').disabled = true; // 追加
+            document.getElementById('observation-info').textContent = '';
+            document.getElementById('observation-prompt').textContent = ''; // メッセージをクリア
+            document.getElementById('continue').style.display = 'none';
+            document.getElementById('reset').style.display = 'none';
+            observedCanvas.style.display = 'none';
+            drawGrid(ctx);
+            drawGrid(observedCtx);
+            // 色の選択画面に戻る
+            document.getElementById('player-color-selection').style.display = 'block';
+            document.getElementById('game-container').style.display = 'none';
+        }
+
+        // リセットボタンの処理
+        document.getElementById('reset').addEventListener('click', resetGame);
+
+        drawGrid(ctx);
+        drawGrid(observedCtx);
+
+        // 色の選択ボタンの処理
+        document.getElementById('choose-black').addEventListener('click', () => {
+            playerColor = 'black';
+            cpuColor = 'white';
+            startGame();
+        });
+
+        document.getElementById('choose-white').addEventListener('click', () => {
+            playerColor = 'white';
+            cpuColor = 'black';
+            startGame();
+        });
+
+        function startGame() {
+            document.getElementById('player-color-selection').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            document.getElementById('turn').textContent = playerColor === 'black' ? 'あなたの番です' : 'CPU の番です';
+
+            if (playerColor === 'black') {
+                currentPlayer = 'black';
+                enablePlayerAction();
+            } else {
+                currentPlayer = 'black';
+                isCpuTurn = true;
+                cpuAction();
+            }
+        }
+    </script>
+</body>
+
+</html>
