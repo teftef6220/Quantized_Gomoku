@@ -1,9 +1,10 @@
 # 量子五目並べ
 
 <!-- add video in assets dir -->
-![video](assets/Main.mp4)
 
-<div><video controls src="<!---https://github.com/user-attachments/assets/4a3aabf9-9e4f-4748-bb20-eab4cd01e78f--->" muted="false"></video></div>
+<p align="center">
+  <img src="./assets/Comp_01.gif" width=90%>
+</p>
 
 ## 概要
 このリポジトリは、こちらの動画と同様のルールで量子五目並べを実装するリポジトリです。
