@@ -1,4 +1,5 @@
 .vscode/*
+Gomoku_Mov/*
 *.log
 *.pyc
 *.py
