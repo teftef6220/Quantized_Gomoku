@@ -1,5 +1,7 @@
 # 量子五目並べ
 
+<!-- add video in assets dir -->
+![video](assets/Main.mp4)
 
 ## 概要
 このリポジトリは、こちらの動画と同様のルールで量子五目並べを実装するリポジトリです。
