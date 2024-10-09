@@ -1,10 +1,19 @@
 # 量子五目並べ
-
 <!-- add video in assets dir -->
 
 <p align="center">
   <img src="./assets/Comp_01.gif" width=90%>
 </p>
+
+試遊はこちら   
+[普通の五目並べ](https://teftef6220.github.io/Quantized_Gomoku/Gomoku.html)  
+[量子五目並べ VS CPU](https://teftef6220.github.io/Quantized_Gomoku/quantaization_gomoku_vs_CPU_select_turn.html)  
+[量子五目並べ 対戦](https://teftef6220.github.io/Quantized_Gomoku/quantaization_gomoku_two_people.html)  
+
+
+
+
+
 
 ## 概要
 このリポジトリは、こちらの動画と同様のルールで量子五目並べを実装するリポジトリです。
@@ -36,9 +45,17 @@ html ファイルを ダブルクリック で実行することができます�
 ゲームをリセットする場合は F5 キーを押してください。
 
 ## プログラムの説明
-[Gomoku.html](/Gomoku.html) は普通の五目並べのゲームです。
-[quantaization_gomoku_vs_CPU_select_turn.html](/quantaization_gomoku_vs_CPU_select_turn.html) は量子五目並べのゲームです。対戦相手は CPU です。先手後手を選択できます。
-[quantaization_gomoku_two_people.html](/quantaization_gomoku_two_people.html) は量子五目並べのゲームです。対戦相手はプレイヤーです。2 人または 1 人のシミュレーション用に作成されています。
+[Gomoku.html](/Gomoku.html) は普通の五目並べのゲームです。  
+[quantaization_gomoku_vs_CPU_select_turn.html](/quantaization_gomoku_vs_CPU_select_turn.html) は量子五目並べのゲームです。対戦相手は CPU です。先手後手を選択できます。   
+[quantaization_gomoku_two_people.html](/quantaization_gomoku_two_people.html) は量子五目並べのゲームです。対戦相手はプレイヤーです。2 人または 1 人のシミュレーション用に作成されています。   
+
+
+
+# Quantum Gomoku
+Play here  
+[Normal Gomoku](https://teftef6220.github.io/Quantized_Gomoku/Gomoku.html)  
+[Quantum Gomoku VS CPU](https://teftef6220.github.io/Quantized_Gomoku/quantaization_gomoku_vs_CPU_select_turn.html)  
+[Quantum Gomoku Two People](https://teftef6220.github.io/Quantized_Gomoku/quantaization_gomoku_two_people.html)  
 
 
 ## Overview
@@ -70,9 +87,9 @@ You can run the html file by double-clicking on it.
 If you want to reset the game, press the F5 key.
 
 ## Program description
-[Gomoku.html](/Gomoku.html) is a normal Gomoku game.
-[quantaization_gomoku_vs_CPU_select_turn.html](/quantaization_gomoku_vs_CPU_select_turn.html) is a quantum Gomoku game. The opponent is the CPU. You can choose the first or second move.
-[quantaization_gomoku_two_people.html](/quantaization_gomoku_two_people.html) is a quantum Gomoku game. The opponent is a player. It is created for simulation with 2 people or 1 person.
+[Gomoku.html](/Gomoku.html) is a normal Gomoku game.  
+[quantaization_gomoku_vs_CPU_select_turn.html](/quantaization_gomoku_vs_CPU_select_turn.html) is a quantum Gomoku game. The opponent is the CPU. You can choose the first or second move.  
+[quantaization_gomoku_two_people.html](/quantaization_gomoku_two_people.html) is a quantum Gomoku game. The opponent is a player. It is created for simulation with 2 people or 1 person.  
 
 
 
